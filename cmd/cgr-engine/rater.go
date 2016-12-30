@@ -63,19 +63,59 @@ func startRater(internalRaterChan chan rpcclient.RpcClientConnection, cacheDoneC
 	go func() {
 		defer close(cacheTaskChan)
 
-		loadHist, err := accountDb.GetLoadHistory(1, true, utils.NonTransactional)
+		/*loadHist, err := accountDb.GetLoadHistory(1, true, utils.NonTransactional)
 		if err != nil || len(loadHist) == 0 {
 			utils.Logger.Info(fmt.Sprintf("could not get load history: %v (%v)", loadHist, err))
 			cacheDoneChan <- struct{}{}
 			return
 		}
-
-		if err := ratingDb.PreloadRatingCache(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil); err != nil {
+		*/
+		var dstIDs, rvDstIDs, rplIDs, rpfIDs, actIDs, aplIDs, atrgIDs, sgIDs, lcrIDs, dcIDs, alsIDs, rvAlsIDs, rlIDs []string
+		if !cfg.CacheConfig.Destinations.Precache {
+			dstIDs = make([]string, 0) // Don't cache any
+		}
+		if !cfg.CacheConfig.ReverseDestinations.Precache {
+			rvDstIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.RatingPlans.Precache {
+			rplIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.RatingProfiles.Precache {
+			rpfIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.Actions.Precache {
+			actIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.ActionPlans.Precache {
+			aplIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.ActionTriggers.Precache {
+			atrgIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.SharedGroups.Precache {
+			sgIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.Lcr.Precache {
+			lcrIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.DerivedChargers.Precache {
+			dcIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.Aliases.Precache {
+			alsIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.ReverseAliases.Precache {
+			rvAlsIDs = make([]string, 0)
+		}
+		if !cfg.CacheConfig.ResourceLimits.Precache {
+			rlIDs = make([]string, 0)
+		}
+		if err := ratingDb.LoadRatingCache(dstIDs, rvDstIDs, rplIDs, rpfIDs, actIDs, aplIDs, atrgIDs, sgIDs, lcrIDs, dcIDs); err != nil {
 			utils.Logger.Crit(fmt.Sprintf("<RALs> Cache rating error: %s", err.Error()))
 			exitChan <- true
 			return
 		}
-		if err := accountDb.PreloadAccountingCache(nil, nil, nil); err != nil {
+		if err := accountDb.LoadAccountingCache(alsIDs, rvAlsIDs, rlIDs); err != nil {
 			utils.Logger.Crit(fmt.Sprintf("<RALs> Cache accounting error: %s", err.Error()))
 			exitChan <- true
 			return

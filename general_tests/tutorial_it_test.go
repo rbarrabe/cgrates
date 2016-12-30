@@ -94,10 +94,47 @@ func TestTutITLoadTariffPlanFromFolder(t *testing.T) {
 
 // Check loaded stats
 func TestTutITCacheStats(t *testing.T) {
+	var reply string
+	if err := tutLocalRpc.Call("ApierV1.LoadCache", utils.AttrReloadCache{}, &reply); err != nil {
+		t.Error(err)
+	} else if reply != "OK" {
+		t.Error(reply)
+	}
 	var rcvStats *utils.CacheStats
-	expectedStats := &utils.CacheStats{Destinations: 0, RatingPlans: 4, RatingProfiles: 0, Actions: 7, ActionPlans: 4, SharedGroups: 0, Aliases: 0, ResourceLimits: 0,
-		DerivedChargers: 0, LcrProfiles: 0, CdrStats: 6, Users: 3}
+	expectedStats := &utils.CacheStats{Destinations: 5, ReverseDestinations: 7, RatingPlans: 4, RatingProfiles: 9,
+		Actions: 8, ActionPlans: 4, SharedGroups: 1, DerivedChargers: 1, LcrProfiles: 5,
+		CdrStats: 6, Users: 3, Aliases: 1, ReverseAliases: 2, ResourceLimits: 2}
 	var args utils.AttrCacheStats
+	if err := tutLocalRpc.Call("ApierV2.GetCacheStats", args, &rcvStats); err != nil {
+		t.Error("Got error on ApierV2.GetCacheStats: ", err.Error())
+	} else if !reflect.DeepEqual(expectedStats, rcvStats) {
+		t.Errorf("Calling ApierV2.GetCacheStats expected: %+v, received: %+v", expectedStats, rcvStats)
+	}
+	expKeys := utils.ArgsCache{
+		DestinationIDs: &[]string{"DST_1003", "DST_1002", "DST_DE_MOBILE", "DST_1007", "DST_FS"},
+		RatingPlanIDs:  &[]string{"RP_RETAIL1", "RP_GENERIC"},
+	}
+	var rcvKeys utils.ArgsCache
+	argsAPI := utils.ArgsCacheKeys{ArgsCache: utils.ArgsCache{
+		DestinationIDs: &[]string{}, RatingPlanIDs: &[]string{"RP_RETAIL1", "RP_GENERIC", "NONEXISTENT"}}}
+	if err := tutLocalRpc.Call("ApierV1.GetCacheKeys", argsAPI, &rcvKeys); err != nil {
+		t.Error("Got error on ApierV2.GetCacheStats: ", err.Error())
+	} else {
+		if len(*expKeys.DestinationIDs) != len(*rcvKeys.DestinationIDs) {
+			t.Errorf("Expected: %+v, received: %+v", expKeys.DestinationIDs, rcvKeys.DestinationIDs)
+		}
+		if !reflect.DeepEqual(*expKeys.RatingPlanIDs, *rcvKeys.RatingPlanIDs) {
+			t.Errorf("Expected: %+v, received: %+v", expKeys.RatingPlanIDs, rcvKeys.RatingPlanIDs)
+		}
+	}
+	if _, err := engine.StopStartEngine(tutLocalCfgPath, 1500); err != nil {
+		t.Fatal(err)
+	}
+	var err error
+	tutLocalRpc, err = jsonrpc.Dial("tcp", tutFsLocalCfg.RPCJSONListen) // We connect over JSON so we can also troubleshoot if needed
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := tutLocalRpc.Call("ApierV2.GetCacheStats", args, &rcvStats); err != nil {
 		t.Error("Got error on ApierV2.GetCacheStats: ", err.Error())
 	} else if !reflect.DeepEqual(expectedStats, rcvStats) {
